@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Aron Snap Camera - Final 6.5 HD</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;font-family:Arial;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#000;color:#fff;overflow:hidden}
+#splash{position:fixed;inset:0;z-index:9999;background:linear-gradient(180deg,#FFFC00 0%,#FFE600 50%,#FFC800 100%);color:#000;display:flex;flex-direction:column;justify-content:space-between;padding:22px 16px 16px;text-align:center;transition:opacity .6s, visibility .6s}
+#splash.hide{opacity:0;visibility:hidden}
+.splash-top{font-weight:900;font-size:15px;letter-spacing:4px;opacity:.6}
+.splash-center{display:flex;flex-direction:column;align-items:center;gap:8px}
+.ghost-box{width:130px;height:130px;background:#000;border-radius:50%;font-size:80px;display:flex;align-items:center;justify-content:center;box-shadow:0 15px 35px #0003;animation:float 1.6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px) scale(1.05)}}
+.splash-title{font-size:34px;font-weight:900;margin-top:6px}
+.splash-sub{font-size:13px;font-weight:700;opacity:.7}
+.splash-tag{background:#000;color:#FFFC00;padding:8px 14px;border-radius:20px;font-size:12px;font-weight:800;margin-top:6px}
+.loader{width:200px;height:8px;background:#0002;border-radius:20px;overflow:hidden;margin-top:14px}
+.loader-bar{height:100%;width:0%;background:#000;border-radius:20px;animation:load 2.2s forwards}
+@keyframes load{0%{width:0%}100%{width:100%}}
+.loading-text{font-size:12px;font-weight:800;opacity:.7}
+.splash-bottom{display:flex;flex-direction:column;gap:3px}
+.made{font-weight:900;font-size:13px}
+.version{background:#000;color:#FFFC00;display:inline-block;padding:7px 10px;border-radius:12px;font-size:11px;font-weight:800;margin:0 auto}
+.version2{font-size:10px;opacity:.6;font-weight:700}
+#loginPage{position:fixed;inset:0;z-index:9000;background:linear-gradient(180deg,#FFFC00,#FFE600,#FFC800);display:none;align-items:center;justify-content:center;padding:16px}
+#loginPage.show{display:flex}
+.login-box{background:#000;padding:26px 22px;border-radius:24px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 40px #0004;max-height:92vh;overflow-y:auto}
+.login-box h2{margin:0;font-size:24px}
+.login-box p{font-size:12px;color:#aaa}
+.login-box input{width:100%;padding:13px;border-radius:12px;border:0;margin:6px 0;background:#222;color:#fff;font-size:15px;outline:none}
+.login-box input:focus{outline:2px solid #FFFC00}
+.login-box button{width:100%;padding:13px;border:0;border-radius:12px;background:#FFFC00;font-weight:900;font-size:15px;cursor:pointer;margin-top:8px}
+.login-box .link{color:#FFFC00;font-size:13px;font-weight:800;cursor:pointer;margin-top:12px;display:block}
+.top{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:linear-gradient(180deg,#000a,transparent)}
+.top button{width:38px;height:38px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:18px;cursor:pointer}
+.logo{background:#FFFC00;color:#000;font-weight:900;padding:6px 12px;border-radius:20px;font-size:14px}
+.cam{position:fixed;inset:0;background:#000;touch-action:none}
+#video3DWrap{position:absolute;inset:0;perspective:900px;overflow:hidden;touch-action:none}
+#video3DInner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .08s linear;will-change:transform}
+video{width:100%;height:100%;object-fit:cover;filter:var(--f,none);image-rendering:auto}
+#faceCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+#emojiLayer{position:absolute;inset:0;pointer-events:none;z-index:5}
+#emojiLayer span{position:absolute;pointer-events:auto;cursor:pointer;text-shadow:0 2px 10px #000}
+.snap-info{position:absolute;top:62px;left:12px;z-index:10;background:#0008;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:800;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snap-info b{color:#FFFC00}
+.streak-badge{position:absolute;top:62px;right:12px;z-index:10;background:#FF3B46;padding:5px 8px;border-radius:50%;font-size:13px;font-weight:900;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#toolPanelTop{position:fixed;top:0;left:0;right:0;z-index:29;background:#000e;padding:64px 10px 10px;display:flex;gap:10px;overflow-x:auto;transition:transform .3s;transform:translateY(-110%);visibility:hidden;scrollbar-width:none}
+#toolPanelTop::-webkit-scrollbar{display:none}
+#toolPanelTop.open{transform:translateY(0);visibility:visible}
+#toolPanelTop button{flex-shrink:0;width:52px;height:52px;border-radius:50%;border:0;background:#222;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#toolPanelTop button span{font-size:9px;margin-top:2px}
+#toolPanelTop button.active{background:#FFFC00;color:#000}
+.bottom{position:fixed;bottom:0;left:0;right:0;z-index:20;background:linear-gradient(0deg,#000e,#0000);padding:8px 0 14px}
+.lens-row{display:flex;gap:10px;overflow-x:auto;padding:8px 12px;scrollbar-width:none}.lens-row::-webkit-scrollbar{display:none}
+.lens{flex-shrink:0;width:58px;height:58px;border-radius:50%;border:3px solid #fff;background:#222;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;position:relative}
+.lens.on{border-color:#FFFC00;transform:scale(1.12);box-shadow:0 0 0 3px #FFFC00aa}
+.lens small{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:9px;background:#000a;padding:2px 5px;border-radius:10px;white-space:nowrap}
+.lens.ai{border-color:#7C3AED;background:#2A0A4A}
+.lens.face{border-color:#00FF88;background:#0A2A1A}
+.lens.td{border-color:#00E5FF;background:#002A33}
+.controls-row{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 8px}
+.side-btn{width:48px;height:48px;border-radius:50%;background:#0008;border:1px solid #fff3;color:#fff;font-size:20px;cursor:pointer;overflow:hidden}
+.side-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.capture-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.capture{width:72px;height:72px;border-radius:50%;background:#fff;border:6px solid #FFFC00;cursor:pointer;box-shadow:0 0 0 4px #fff2,0 8px 20px #000a;font-size:28px;display:flex;align-items:center;justify-content:center}
+.capture:active{transform:scale(.92)}
+.video-btn{width:58px;height:58px;border-radius:50%;background:#FF3B46;border:4px solid #fff;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 12px #000a}
+.filter-name{text-align:center;font-size:12px;font-weight:800;color:#FFFC00;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drawer{position:fixed;bottom:-100%;left:0;right:0;z-index:40;background:#111;border-radius:22px 22px 0 0;padding:16px;transition:.35s;max-height:75vh;overflow-y:auto}
+.drawer.open{bottom:0}
+.drawer h3{margin:0 0 10px}
+.slider-row{display:flex;align-items:center;gap:10px;margin:10px 0}.slider-row label{width:85px;font-size:13px}.slider-row input{flex:1;accent-color:#FFFC00}.slider-row b{width:40px;text-align:right;font-size:12px}
+.emoji-row{display:flex;gap:8px;overflow-x:auto;padding:6px 0}.emoji-row button{font-size:28px;background:#222;border:0;border-radius:14px;padding:8px 10px;cursor:pointer;flex-shrink:0}
+.filter-btns{display:flex;gap:8px;overflow-x:auto}.filter-btns button{border:0;padding:8px 14px;border-radius:20px;background:#222;color:#fff;font-weight:700;flex-shrink:0;cursor:pointer}.filter-btns button.on{background:#FFFC00;color:#000}
+.btn{width:100%;padding:12px;border:0;border-radius:12px;font-weight:800;cursor:pointer;margin-top:8px}
+.gallery{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}.gallery img,.gallery video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px}
+.close{position:absolute;top:10px;right:12px;width:32px;height:32px;border-radius:50%;border:0;background:#222;color:#fff;font-size:18px;cursor:pointer}
+.flash{position:fixed;inset:0;background:#fff;z-index:99;opacity:0;pointer-events:none}.flash.go{animation:flash .4s}@keyframes flash{0%{opacity:1}100%{opacity:0}}
+#timerCount{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:90px;font-weight:900;z-index:40;display:none;text-shadow:0 0 20px #000}
+#voiceRecBar{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:25;background:#FF3B46;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:900;display:none;animation:blink 1s infinite;white-space:nowrap}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+.story-row{display:flex;gap:10px;overflow-x:auto;padding:8px 12px}
+.story{flex-shrink:0;width:56px;text-align:center;cursor:pointer}
+.story img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:3px solid #FFFC00}
+.story small{font-size:10px}
+.beauty-card{background:#222;padding:12px;border-radius:14px;margin:8px 0}
+.profile-card{background:#222;padding:14px;border-radius:16px;text-align:center}
+.profile-card .avatar{width:70px;height:70px;border-radius:50%;background:#FFFC00;color:#000;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.face-hint{position:fixed;top:130px;left:50%;transform:translateX(-50%);z-index:15;background:#00FF88;color:#000;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:900;display:none;white-space:nowrap}
+.td-hint{position:fixed;top:158px;left:50%;transform:translateX(-50%);z-index:15;background:#00E5FF;color:#000;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:900;display:none;white-space:nowrap}
+#pinchZoomLabel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:25;background:#000a;color:#FFFC00;padding:14px 22px;border-radius:30px;font-size:32px;font-weight:900;display:none;pointer-events:none;border:2px solid #FFFC00}
+#hdBadge{position:absolute;top:96px;left:12px;z-index:10;background:#00FF88;color:#000;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:900}
+#photoViewer{position:fixed;inset:0;z-index:100;background:#000;display:none;flex-direction:column}
+#photoViewer.show{display:flex}
+#photoViewer img,#photoViewer video{flex:1;width:100%;object-fit:contain;background:#000}
+.viewer-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:12px;background:linear-gradient(180deg,#000d,transparent);z-index:5}
+.viewer-top button{border:0;background:#FFFC00;color:#000;font-weight:900;padding:10px 16px;border-radius:20px;font-size:14px;cursor:pointer}
+.viewer-top .v-close{background:#222;color:#fff}
+.viewer-bottom{padding:12px;display:flex;gap:8px;justify-content:center;background:#111}
+.viewer-bottom button{border:0;padding:10px 14px;border-radius:20px;font-weight:900;font-size:12px;cursor:pointer}
+/* ===== V8 ADD - CSS START ===== */
+.editor-btn{position:fixed;bottom:118px;right:12px;z-index:22;background:linear-gradient(135deg,#FF3B46,#FF9D00);color:#fff;border:2px solid #fff;padding:10px 14px;border-radius:30px;font-weight:900;font-size:13px;cursor:pointer}
+.creator-hub-btn{position:fixed;bottom:118px;left:12px;z-index:22;background:linear-gradient(135deg,#7C3AED,#FF3B46);color:#fff;border:2px solid #fff;padding:10px 14px;border-radius:30px;font-weight:900;font-size:13px;cursor:pointer}
+.test-btn{position:fixed;bottom:160px;left:50%;transform:translateX(-50%);z-index:23;background:#00FF88;color:#000;padding:8px 16px;border-radius:20px;font-weight:900;font-size:12px;cursor:pointer;border:0}
+.creator-card{background:linear-gradient(135deg,#7C3AED,#FF3B46,#FF9D00);padding:16px;border-radius:18px;text-align:center;margin:10px 0}
+.creator-card h2{margin:4px 0;font-size:22px}.creator-card .v-big{font-size:26px;font-weight:900}
+.tab-row{display:flex;gap:6px;overflow-x:auto;margin:10px 0}.tab-row button{border:0;padding:9px 14px;border-radius:20px;background:#222;color:#fff;font-weight:800;cursor:pointer;white-space:nowrap}.tab-row button.on{background:#FFFC00;color:#000}
+.hub-box{background:#222;padding:12px;border-radius:14px;margin:8px 0}
+.hub-box textarea,.hub-box input,.hub-box select{width:100%;background:#111;color:#fff;border:1px solid #333;border-radius:10px;padding:11px;font-size:14px;margin:6px 0}
+.hub-box textarea{min-height:80px}
+.platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.platform-grid button{border:0;padding:14px 8px;border-radius:14px;font-weight:900;font-size:13px;cursor:pointer}
+.idea-card{background:#1A1A1A;border-left:4px solid #FFFC00;padding:10px;border-radius:10px;margin:8px 0}
+.edit-preview{width:100%;aspect-ratio:9/16;max-height:340px;background:#000;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:2px solid #333}
+.edit-preview canvas{max-width:100%;max-height:100%}
+.select-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 0}
+.select-grid div{position:relative;border-radius:12px;overflow:hidden;cursor:pointer;border:3px solid transparent}
+.select-grid div.sel{border-color:#FFFC00}
+.select-grid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.select-grid span{position:absolute;top:4px;right:4px;background:#FFFC00;color:#000;font-weight:900;font-size:11px;padding:2px 7px;border-radius:10px}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chip-row button{border:0;padding:8px 12px;border-radius:20px;background:#333;color:#fff;font-weight:800;cursor:pointer}.chip-row button.on{background:#FFFC00;color:#000}
+#versionPill{position:absolute;top:96px;left:12px;z-index:10;background:linear-gradient(90deg,#7C3AED,#FF3B46);padding:5px 11px;border-radius:20px;font-size:11px;font-weight:900;border:1px solid #fff;cursor:pointer}
+#editProgress{height:10px;background:#222;border-radius:20px;overflow:hidden;display:none;margin:8px 0}
+#editProgress div{height:100%;width:0%;background:linear-gradient(90deg,#FFFC00,#FF3B46)}
+/* ===== V8 ADD - CSS END ===== */
+</style>
+</head>
+<body>
+<div id="splash">
+<div class="splash-top">ARON</div>
+<div class="splash-center">
+<div class="ghost-box">👻</div>
+<div class="splash-title">Aron Snap</div>
+<div class="splash-sub">HD Clear • Pinch Zoom • 3D Camera • Face Lens</div>
+<div class="splash-tag">📸 HD Clear • 🔍 দুই আঙুলে জুম • 🧊 3D • 😍 Face Filter</div>
+<div class="loader"><div class="loader-bar"></div></div>
+<div class="loading-text" id="loadingText">HD ক্যামেরা খুলতেছি...</div>
+</div>
+<div class="splash-bottom">
+<div class="made">Made with ❤️ by Aron</div>
+<div class="version">Version 6.5.0 HD • Build 2026 • Code: ARON-SNAP-065</div>
+<div class="version2">© 2026 Aron Snap Camera • All Rights Reserved</div>
+</div>
+</div>
+
+<div id="loginPage">
+<div class="login-box">
+<div style="width:80px;height:80px;background:#FFFC00;border-radius:50%;font-size:50px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px">👻</div>
+<h2 id="authTitle">Login করো</h2>
+<p id="authSub">Logout হয়ে গেছো, আবার ঢুকতে Login করো</p>
+<p id="authError" style="color:#FF3B46;font-weight:800;display:none"></p>
+<div id="loginForm">
+<input type="text" id="loginUser" placeholder="👤 ইউজারনেম - যেমন: aron123">
+<input type="password" id="loginPass" placeholder="🔒 পাসওয়ার্ড">
+<button onclick="doLoginUser()">🔓 Login</button>
+<span class="link" onclick="showRegister()">একাউন্ট নাই? 👉 Create Account করো</span>
+</div>
+<div id="registerForm" style="display:none">
+<input type="text" id="regName" placeholder="😊 তোমার নাম - যেমন: Aron">
+<input type="text" id="regUser" placeholder="👤 ইউজারনেম বানাও - যেমন: aron123">
+<input type="password" id="regPass" placeholder="🔒 পাসওয়ার্ড বানাও (কমপক্ষে 4 অক্ষর)">
+<input type="password" id="regPass2" placeholder="🔒 আবার পাসওয়ার্ড দাও">
+<button onclick="doRegister()">✅ Create Account</button>
+<span class="link" onclick="showLogin()">একাউন্ট আছে? 👉 Login করো</span>
+</div>
+<div style="margin-top:14px;background:#222;padding:8px;border-radius:10px;font-size:11px;color:#FFFC00;font-weight:800">Version 6.5.0 HD • একাউন্ট সবার আলাদা থাকবে</div>
+</div>
+</div>
+
+<div class="flash" id="flashEl"></div>
+<div id="timerCount"></div>
+<div id="voiceRecBar">🔴 🎙️ VOICE RECORD CHOLTESE</div>
+<div id="faceHint" class="face-hint">😍 Face পাওয়া গেছে! মুখ নাড়াও, ফিল্টার নড়বে</div>
+<div id="tdHint" class="td-hint">🧊 3D ON - ফোন ঘুরাও, সামনের সব স্থির থাকবে</div>
+<div id="pinchZoomLabel">1.0x</div>
+
+<div id="photoViewer">
+<div class="viewer-top">
+<button onclick="closeViewer()">⬅️ Back</button>
+<span id="viewerTitle" style="font-weight:900;font-size:13px">📸 Snap</span>
+<button class="v-close" onclick="closeViewer()">✕</button>
+</div>
+<img id="viewerImg" src="" style="display:none">
+<video id="viewerVideo" src="" controls playsinline style="display:none"></video>
+<div style="position:absolute;bottom:90px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:#000a;padding:6px;border-radius:20px;z-index:5">
+<button onclick="viewerZoom(0.5)" style="border:0;background:#222;color:#fff;padding:7px 10px;border-radius:14px;font-weight:900">➖</button>
+<span id="viewerZoomLabel" style="font-weight:900;color:#FFFC00;padding:7px 4px">1.0x</span>
+<button onclick="viewerZoom(2)" style="border:0;background:#FFFC00;color:#000;padding:7px 10px;border-radius:14px;font-weight:900">➕</button>
+<button onclick="viewerZoomReset()" style="border:0;background:#222;color:#fff;padding:7px 10px;border-radius:14px;font-weight:900">Reset</button>
+</div>
+<div class="viewer-bottom">
+<button style="background:#0B5CFF;color:#fff" onclick="downloadViewer()">⬇️ সেভ করো</button>
+<button style="background:#0A8A4A;color:#fff" onclick="shareLast()">📤 Share</button>
+<button style="background:#FFFC00;color:#000" onclick="closeViewer()">⬅️ ক্যামেরায় ফিরো</button>
+</div>
+</div>
+
+<div id="toolPanelTop">
+<button onclick="openDrawer('profileDrawer');toggleToolPanel()">👤<span>Profile</span></button>
+<button onclick="openDrawer('filterDrawer');toggleToolPanel()">🎨<span>Filter</span></button>
+<button onclick="openDrawer('dslrDrawer');toggleToolPanel()">🎛️<span>DSLR</span></button>
+<button onclick="openDrawer('beautyDrawer');toggleToolPanel()">✨<span>Beauty</span></button>
+<button onclick="openDrawer('emojiDrawer');toggleToolPanel()">😍<span>Emoji</span></button>
+<button onclick="openDrawer('storyDrawer');toggleToolPanel()">▶️<span>Story</span></button>
+<button onclick="toggleFlash()">⚡<span>Flash</span></button>
+<button onclick="setTimer(3)">⏱️<span>Timer</span></button>
+<button onclick="flipCamera()">🔄<span>Flip</span></button>
+<button onclick="toggleToolPanel()">✕<span>Close</span></button>
+</div>
+
+<div class="cam">
+<div id="video3DWrap">
+<div id="video3DInner">
+<video id="video" autoplay playsinline muted></video>
+<canvas id="faceCanvas"></canvas>
+</div>
+</div>
+<div id="emojiLayer"></div>
+<div class="snap-info">👻 <b id="camModeLabel">DSLR HD</b> • <span id="resLabel">1080p HD</span> • <span id="timeLabel">--:--</span></div>
+<div class="streak-badge" id="streakBadge" onclick="openDrawer('profileDrawer')">🔥1</div>
+<div id="hdBadge">📸 HD Clear • Blur OFF</div>
+</div>
+
+<div class="top">
+<div style="display:flex;gap:8px"><button onclick="openDrawer('profileDrawer')">👤</button><button onclick="openDrawer('storyDrawer')">▶️</button></div>
+<div class="logo">👻 Aron Snap</div>
+<div style="display:flex;gap:8px"><button onclick="toggleFlash()">⚡</button><button id="topGearBtn" onclick="toggleToolPanel()">⚙️</button></div>
+</div>
+
+<div class="bottom">
+<div class="lens-row">
+<div class="lens td" onclick="toggle3DCamera()">🧊<small>3D Cam</small></div>
+<div class="lens td" onclick="toggleStabilize()">🎯<small>Stable</small></div>
+<div class="lens face" onclick="setFaceLens('dog_face',this)">🐶<small>Face Dog</small></div>
+<div class="lens face" onclick="setFaceLens('crown_face',this)">👑<small>Face Crown</small></div>
+<div class="lens face" onclick="setFaceLens('glass_face',this)">😎<small>Face Glass</small></div>
+<div class="lens face" onclick="setFaceLens('makeup_face',this)">💄<small>Face Makeup</small></div>
+<div class="lens face" onclick="setFaceLens('baby_face',this)">👶<small>Face Baby</small></div>
+<div class="lens face" onclick="setFaceLens('cat_face',this)">🐱<small>Face Cat</small></div>
+<div class="lens face" onclick="setFaceLens('none_face',this)">❌<small>Face Off</small></div>
+<div class="lens on" onclick="setLens('dslr',this)">📷<small>DSLR HD</small></div>
+<div class="lens ai" onclick="setLens('baby',this)">👶<small>AI Baby</small></div>
+<div class="lens ai" onclick="setLens('old',this)">👴<small>AI Old</small></div>
+<div class="lens ai" onclick="setLens('cartoon',this)">🎨<small>Cartoon</small></div>
+<div class="lens ai" onclick="setLens('girl',this)">💄<small>Girl</small></div>
+<div class="lens ai" onclick="setLens('makeup',this)">💋<small>Makeup</small></div>
+<div class="lens" onclick="setLens('iphone',this)">🍎<small>iPhone</small></div>
+<div class="lens" onclick="setLens('samsung',this)">📱<small>Samsung</small></div>
+<div class="lens" onclick="setLens('beauty',this)">✨<small>Beauty</small></div>
+<div class="lens" onclick="setLens('dog',this)">🐶<small>Dog</small></div>
+<div class="lens" onclick="setLens('cat',this)">🐱<small>Cat</small></div>
+<div class="lens" onclick="setLens('crown',this)">👑<small>Crown</small></div>
+<div class="lens" onclick="setLens('fire',this)">🔥<small>Fire</small></div>
+<div class="lens" onclick="setLens('vintage',this)">🎞️<small>Vintage</small></div>
+<div class="lens" onclick="setLens('night',this)">🌙<small>Night</small></div>
+<div class="lens" onclick="setLens('bw',this)">⬛<small>B&W</small></div>
+<div class="lens" onclick="setLens('food',this)">🍔<small>Food</small></div>
+<div class="lens" onclick="setLens('cricket',this)">🏏<small>Cricket</small></div>
+</div>
+<div class="controls-row">
+<button class="side-btn" onclick="openDrawer('galleryDrawer')"><img id="lastThumb" src="" style="display:none"><span id="galleryIcon">🖼️</span></button>
+<div class="capture-wrap">
+<div style="display:flex;align-items:center;gap:10px">
+<button class="capture" onclick="takePhoto()">📸</button>
+<button id="videoBtn" class="video-btn" onclick="toggleVideo()">🎥</button>
+</div>
+<div class="filter-name" id="filterName">📷 HD Clear • 🔍 দুই আঙুলে জুম</div>
+<div id="recTimer" style="display:none;background:#FF3B46;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:900">🔴 REC 00:00</div>
+<div style="display:flex;gap:6px;margin-top:4px">
+<button onclick="shareLast()" style="padding:7px 12px;border:0;border-radius:20px;background:#0A8A4A;color:#fff;font-size:11px;font-weight:900">📤 Share</button>
+<button onclick="openDrawer('storyDrawer')" style="padding:7px 12px;border:0;border-radius:20px;background:#7C3AED;color:#fff;font-size:11px;font-weight:900">▶️ Story</button>
+<button onclick="setBeautyPro(2)" style="padding:7px 12px;border:0;border-radius:20px;background:#FFFC00;color:#000;font-size:11px;font-weight:900">✨ Beauty Pro</button>
+</div>
+</div>
+<button class="side-btn" onclick="flipCamera()">🔄</button>
+</div>
+</div>
+
+<div class="drawer" id="profileDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>👤 আমার প্রোফাইল</h3>
+<div class="profile-card">
+<div class="avatar" id="profileAvatar">G</div>
+<b id="profileName" style="font-size:18px">Guest</b><br>
+<span id="profileUser" style="color:#FFFC00;font-weight:800">@guest</span><br>
+<span id="profileStreak" style="font-size:12px;color:#aaa">🔥 0 দিন • ⭐ 0 পয়েন্ট</span><br><br>
+<button class="btn" style="background:#FFFC00;color:#000" onclick="document.getElementById('loginPage').classList.add('show');closeDrawers();showLogin()">🔓 Login / Create Account</button>
+<button class="btn" style="background:#FF3B46;color:#fff" onclick="doLogoutUser()">🚪 Logout</button>
+</div>
+<p style="font-size:11px;color:#888;text-align:center;margin-top:10px">Logout করলেই আবার Login করতে হবে<br>ঢোকার সাথে সাথে Login চাইবে না</p>
+</div>
+
+<div class="drawer" id="beautyDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>✨ Beauty Pro - Blur OFF, HD Clear</h3>
+<div class="beauty-card"><b>🔍 জুম - অরিজিনাল ক্যামেরার মতন</b><p style="font-size:12px;color:#aaa">ক্যামেরার ডিসপ্লের উপর দুই আঙুল রাখো → ছড়াইলে Zoom In, চাপাইলে Zoom Out<br>0.5x = কাছের জিনিস দূরে • 100x = দূরের জিনিস কাছে</p><div style="display:flex;gap:6px"><button class="btn" style="background:#333;color:#fff;flex:1" onclick="resetZoom()">↩️ 1x এ ফিরো</button><button class="btn" style="background:#00FF88;color:#000;flex:1" onclick="setHDMode()">📸 HD Clear</button></div></div>
+<div class="beauty-card"><b>💄 Beauty Level - Blur ছাড়া</b><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="background:#333;color:#fff;flex:1" onclick="setBeautyPro(0)">Normal</button><button class="btn" style="background:#FFFC00;color:#000;flex:1" onclick="setBeautyPro(1)">Soft ✨</button><button class="btn" style="background:#FF3B46;color:#fff;flex:1" onclick="setBeautyPro(2)">Pro 🔥</button></div><p style="font-size:11px;color:#00FF88">এখন Beauty তে Blur লাগবে না, ক্যামেরা ঘোলা হবে না</p></div>
+<div class="beauty-card"><b>💋 Makeup</b><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="background:#333;color:#fff;flex:1" onclick="setLens('makeup',null)">💄 Lipstick</button><button class="btn" style="background:#333;color:#fff;flex:1" onclick="setLens('girl',null)">👩 Girl Look</button></div></div>
+<div class="beauty-card"><b>🌆 Background</b><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" style="background:#333;color:#fff;flex:1" onclick="setBg('cox')">🏖️ Cox's Bazar</button><button class="btn" style="background:#333;color:#fff;flex:1" onclick="setBg('paris')">🗼 Paris</button><button class="btn" style="background:#333;color:#fff;flex:1" onclick="setBg('dubai')">🌆 Dubai</button></div><p style="font-size:12px;color:#aaa" id="bgLabel">এখন: Normal Background</p></div>
+<div class="beauty-card"><b>🧊 3D Camera</b><p style="font-size:12px;color:#aaa">ফোন ঘুরালেও সামনের সব স্থির থাকবে</p><div style="display:flex;gap:8px"><button class="btn" style="background:#00E5FF;color:#000;flex:1" onclick="toggle3DCamera()">🧊 3D ON/OFF</button><button class="btn" style="background:#00FF88;color:#000;flex:1" onclick="toggleStabilize()">🎯 Stable</button></div></div>
+</div>
+<div class="drawer" id="storyDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>▶️ Stories - ২৪ ঘণ্টা থাকবে</h3><p style="font-size:12px;color:#aaa">ছবি তুললেই অটো Story তে যাবে।</p><div class="story-row" id="storyRow"></div><div class="gallery" id="storyGallery"></div><button class="btn" style="background:#FF3B46;color:#fff" onclick="clearStories()">🗑️ সব Story মুছো</button></div>
+<div class="drawer" id="dslrDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>🎛️ DSLR কন্ট্রোল - HD Clear</h3>
+<div class="slider-row"><label>☀️ Brightness</label><input type="range" id="bright" min="50" max="150" value="105" oninput="updateFilter()"><b id="brightVal">105%</b></div>
+<div class="slider-row"><label>🎨 Contrast</label><input type="range" id="contrast" min="50" max="200" value="115" oninput="updateFilter()"><b id="contrastVal">115%</b></div>
+<div class="slider-row"><label>🌈 Saturation</label><input type="range" id="satur" min="0" max="200" value="120" oninput="updateFilter()"><b id="saturVal">120%</b></div>
+<div class="slider-row"><label>🔆 Exposure</label><input type="range" id="exposure" min="50" max="180" value="100" oninput="updateFilter()"><b id="exposureVal">100%</b></div>
+<div class="slider-row"><label>🌫️ Blur / Bokeh</label><input type="range" id="blur" min="0" max="8" value="0" oninput="updateFilter()"><b id="blurVal">0px - OFF</b></div>
+<p style="font-size:12px;color:#00FF88">Blur 0 রাখলেই ক্যামেরা ঘোলা হবে না। Blur বাড়াইলে ঘোলা লাগবে।</p>
+<button class="btn" style="background:#00FF88;color:#000" onclick="setHDMode()">📸 HD Clear Mode ON করো</button>
+</div>
+<div class="drawer" id="filterDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>🎨 ফিল্টার</h3><div class="filter-btns" id="filterRow"><button class="on" onclick="setFilter('none',this)">Original HD</button><button onclick="setFilter('bw',this)">⬛ B&W</button><button onclick="setFilter('warm',this)">🌅 Warm</button><button onclick="setFilter('cool',this)">❄️ Cool</button><button onclick="setFilter('vivid',this)">🌈 Vivid</button><button onclick="setFilter('cinema',this)">🎬 Cinema</button><button onclick="setFilter('sepia',this)">🤎 Sepia</button></div></div>
+<div class="drawer" id="emojiDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>😍 ইমোজি</h3><div class="emoji-row"><button onclick="addEmoji('😍')">😍</button><button onclick="addEmoji('🔥')">🔥</button><button onclick="addEmoji('😎')">😎</button><button onclick="addEmoji('❤️')">❤️</button><button onclick="addEmoji('🥰')">🥰</button><button onclick="addEmoji('😂')">😂</button><button onclick="addEmoji('🌸')">🌸</button><button onclick="addEmoji('👑')">👑</button><button onclick="addEmoji('✨')">✨</button><button onclick="addEmoji('🐶')">🐶</button><button onclick="addEmoji('🐱')">🐱</button><button onclick="addEmoji('🎂')">🎂</button></div><div style="display:flex;gap:8px"><button class="btn" style="background:#FF3B46;color:#fff;flex:1" onclick="clearEmoji()">🗑️ মুছো</button><button class="btn" style="background:#0A8A4A;color:#fff;flex:1" onclick="randomEmoji()">🎲 Random</button></div></div>
+<div class="drawer" id="galleryDrawer"><button class="close" onclick="closeDrawers()">×</button><h3>🖼️ আমার Snaps - <span id="totalCount">0</span>টি</h3>
+<div style="display:flex;gap:6px"><button class="btn" style="background:#333;color:#fff;flex:1" onclick="showGallery('all')">সব</button><button class="btn" style="background:#333;color:#fff;flex:1" onclick="showGallery('photo')">📸 ছবি</button><button class="btn" style="background:#333;color:#fff;flex:1" onclick="showGallery('video')">🎥 ভিডিও</button></div>
+<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="background:#0B5CFF;color:#fff;flex:1" onclick="downloadAll()">⬇️ সব ডাউনলোড</button><button class="btn" style="background:#FF3B46;color:#fff;flex:1" onclick="clearGallery()">🗑️ সব মুছো</button></div>
+<div class="gallery" id="gallery"></div></div>
+<!-- ===== V8 ADD - HTML START ===== -->
+<button type="button" class="creator-hub-btn" onclick="openDrawer('creatorDrawer')">🎬 Studio</button>
+<button type="button" class="editor-btn" onclick="openDrawer('editorDrawer')">✂️ Editor</button>
+
+<!-- ✂️ EDITOR -->
+<div class="drawer" id="editorDrawer"><button class="close" onclick="closeDrawers()">×</button><div class="creator-card"><div style="font-size:36px">✂️</div><h2>Photo Video Editor</h2><div class="v-big">ছবি → ভিডিও → এডিট</div></div>
+<div class="tab-row"><button class="on" id="tabBtnMake" onclick="showEditTab('make')">📸 ছবি দিয়ে ভিডিও</button><button id="tabBtnEdit" onclick="showEditTab('edit')">✂️ ভিডিও এডিট</button><button id="tabBtnExport" onclick="showEditTab('export')">📤 Export</button></div>
+<div id="editMake"><div class="hub-box"><b>1️⃣ ছবি বাছো (২-১০টা)</b><div class="select-grid" id="photoSelectGrid"></div><div style="display:flex;gap:6px"><button class="btn" style="background:#333;color:#fff;flex:1" onclick="clearSelectedPhotos()">🗑️ বাদ দাও</button><button class="btn" style="background:#FFFC00;color:#000;flex:1" onclick="loadDemoPhotos()">🖼️ Demo ছবি</button></div><p>✅ সিলেক্ট: <b id="selectedCount">0</b>টা • মোট: <b id="totalVideoTime">0s</b></p></div>
+<div class="hub-box"><b>2️⃣ এডিটিং</b><input id="editTitle" placeholder="ভিডিও লেখা" value="আমার ভিডিও ❤️"><div class="chip-row" id="stickerRow"><button class="on" onclick="setSticker('🔥',this)">🔥</button><button onclick="setSticker('❤️',this)">❤️</button><button onclick="setSticker('😍',this)">😍</button><button onclick="setSticker('👑',this)">👑</button><button onclick="setSticker('',this)">❌ নাই</button></div><div class="chip-row" id="editFilterRow"><button class="on" onclick="setEditFilter('none',this)">Original HD</button><button onclick="setEditFilter('vivid',this)">🌈 Vivid</button><button onclick="setEditFilter('warm',this)">🌅 Warm</button><button onclick="setEditFilter('bw',this)">⬛ B&W</button><button onclick="setEditFilter('cinema',this)">🎬 Cinema</button></div><div class="chip-row" id="transitionRow"><button class="on" onclick="setTransition('fade',this)">✨ Fade</button><button onclick="setTransition('zoom',this)">🔍 Zoom</button><button onclick="setTransition('slide',this)">➡️ Slide</button></div><div class="chip-row" id="speedRow"><button onclick="setEditSpeed(0.5,this)">🐢 0.5x</button><button class="on" onclick="setEditSpeed(1,this)">▶️ 1x</button><button onclick="setEditSpeed(2,this)">🚀 2x</button></div><div class="slider-row"><label>⏱️ প্রতি ছবি</label><input type="range" id="perPhotoSec" min="1" max="5" value="2" oninput="updateEditPreview()"><b id="perPhotoLabel">2s</b></div></div>
+<div class="hub-box"><b>👀 Preview</b><div class="edit-preview"><canvas id="editCanvas" width="540" height="960"></canvas></div><button class="btn" style="background:#222;color:#fff" onclick="updateEditPreview()">🔄 Preview দেখো</button></div><div id="editProgress"><div id="editProgressBar"></div></div><button class="btn" style="background:linear-gradient(90deg,#FF3B46,#FF9D00);color:#fff;font-size:16px;padding:16px" onclick="makeVideoFromPhotos()">🎬 ভিডিও বানাও</button></div>
+<div id="editEdit" style="display:none"><div class="hub-box"><b>✂️ ভিডিও এডিট</b><video id="editVideoPlayer" controls playsinline style="width:100%;aspect-ratio:9/16;max-height:320px;background:#000;border-radius:12px"></video><p id="editVideoInfo" style="font-size:12px;color:#aaa">ভিডিও বানাও নাই</p><input id="editNewText" placeholder="নতুন লেখা"><div class="chip-row"><button onclick="applyFilterToVideo('none',this)">Original</button><button onclick="applyFilterToVideo('vivid',this)">🌈 Vivid</button><button onclick="applyFilterToVideo('bw',this)">⬛ B&W</button></div><div class="chip-row"><button onclick="setVideoSpeed(0.5)">🐢 0.5x</button><button onclick="setVideoSpeed(1)">▶️ 1x</button><button onclick="setVideoSpeed(2)">🚀 2x</button></div><button class="btn" style="background:#FFFC00;color:#000" onclick="applyVideoEdit()">✅ এডিট সেভ করো</button></div><div class="hub-box"><b>🖼️ Thumbnail</b><input id="thumbText" placeholder="Thumbnail লেখা" value="দেখো মজা পাবা! 😂"><button class="btn" style="background:#7C3AED;color:#fff" onclick="makeThumbnail()">🖼️ Thumbnail বানাও</button><div class="edit-preview" style="aspect-ratio:16/9"><canvas id="thumbCanvas" width="640" height="360"></canvas></div><button class="btn" style="background:#0B5CFF;color:#fff" onclick="downloadThumbnail()">⬇️ Thumbnail ডাউনলোড</button></div></div>
+<div id="editExport" style="display:none"><div class="hub-box"><b>📤 Export</b><video id="finalVideoPlayer" controls playsinline style="width:100%;aspect-ratio:9/16;max-height:320px;background:#000;border-radius:12px;display:none"></video><p id="finalVideoInfo">ভিডিও বানাও নাই</p><div style="display:flex;gap:6px"><button class="btn" style="background:#0B5CFF;color:#fff;flex:1" onclick="downloadFinalVideo()">⬇️ ডাউনলোড</button><button class="btn" style="background:#0A8A4A;color:#fff;flex:1" onclick="copyText('captionOutput')">📋 Caption কপি</button></div><div class="platform-grid"><button style="background:#1877F2;color:#fff" onclick="uploadTo('facebook')">📘 Facebook</button><button style="background:#E1306C;color:#fff" onclick="uploadTo('instagram')">📸 Instagram</button><button style="background:#FF0000;color:#fff" onclick="uploadTo('youtube')">▶️ YouTube</button><button style="background:#000;color:#fff;border:1px solid #fff" onclick="uploadTo('tiktok')">🎵 TikTok</button></div><button class="btn" style="background:linear-gradient(90deg,#1877F2,#E1306C,#FF0000,#000);color:#fff" onclick="uploadToAll()">🚀 সব জায়গায় খুলো</button></div></div></div>
+
+<!-- 🎬 CREATOR STUDIO -->
+<div class="drawer" id="creatorDrawer"><button class="close" onclick="closeDrawers()">×</button><div class="creator-card"><div style="font-size:36px">🎬</div><h2>Creator Studio</h2><div class="v-big">Idea → Script → Video → Edit → Upload</div></div>
+<div class="tab-row"><button class="on" id="tabBtnIdea" onclick="showHubTab('idea')">💡 Idea</button><button id="tabBtnScript" onclick="showHubTab('script')">📝 Script</button><button id="tabBtnVideo" onclick="showHubTab('video')">🎥 Video</button><button id="tabBtnCaption" onclick="showHubTab('caption')">✍️ Caption</button><button id="tabBtnUpload" onclick="showHubTab('upload')">📤 Upload</button></div>
+<div id="hubIdea"><div class="hub-box"><b>💡 আইডিয়া</b><select id="ideaCategory"><option>Funny</option><option>Vlog</option><option>Islamic</option><option>Gaming</option><option>Beauty</option><option>Education</option><option>Cricket</option><option>Food</option></select><button class="btn" style="background:#FFFC00;color:#000" onclick="generateIdeas()">🎲 আইডিয়া দাও</button><div id="ideaList"></div></div></div>
+<div id="hubScript" style="display:none"><div class="hub-box"><b>📝 স্ক্রিপ্ট</b><input id="scriptTopic" placeholder="টপিক লিখো"><select id="scriptLength"><option value="15">15s Reels</option><option value="30">30s TikTok</option><option value="60">60s Reels</option><option value="180">3min YouTube</option></select><button class="btn" style="background:#7C3AED;color:#fff" onclick="generateScript()">✨ স্ক্রিপ্ট বানাও</button><textarea id="scriptOutput"></textarea><button class="btn" style="background:#0A8A4A;color:#fff" onclick="copyText('scriptOutput')">📋 কপি করো</button></div></div>
+<div id="hubVideo" style="display:none"><div class="hub-box"><b>🎥 ভিডিও বানাও</b><div style="display:flex;gap:6px"><button class="btn" style="background:#FF3B46;color:#fff;flex:1" onclick="closeDrawers();toggleVideo()">🎥 ভিডিও শুরু</button><button class="btn" style="background:#FF9D00;color:#000;flex:1" onclick="closeDrawers();openDrawer('editorDrawer')">✂️ Editor</button></div></div></div>
+<div id="hubCaption" style="display:none"><div class="hub-box"><b>✍️ Caption</b><input id="captionTopic" placeholder="ভিডিও কী নিয়ে?"><button class="btn" style="background:#E1306C;color:#fff" onclick="generateCaption()">✨ Caption বানাও</button><textarea id="captionOutput"></textarea><button class="btn" style="background:#0A8A4A;color:#fff" onclick="copyText('captionOutput')">📋 কপি করো</button></div></div>
+<div id="hubUpload" style="display:none"><div class="hub-box"><b>📤 Upload</b><div class="platform-grid"><button style="background:#1877F2;color:#fff" onclick="uploadTo('facebook')">📘 Facebook</button><button style="background:#E1306C;color:#fff" onclick="uploadTo('instagram')">📸 Instagram</button><button style="background:#FF0000;color:#fff" onclick="uploadTo('youtube')">▶️ YouTube</button><button style="background:#000;color:#fff;border:1px solid #fff" onclick="uploadTo('tiktok')">🎵 TikTok</button></div></div></div></div>
+<!-- ===== V8 ADD - HTML END ===== -->
+<canvas id="canvas" style="display:none"></canvas>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAt-HbRhwVBCf3wAQf56itSh-vjqg5-GKI",
+  authDomain: "aron-snap.firebaseapp.com",
+  databaseURL: "https://aron-snap-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "aron-snap",
+  storageBucket: "aron-snap.firebasestorage.app",
+  messagingSenderId: "1005932992828",
+  appId: "1:1005932992828:web:7d95f7fce36a2783efe639",
+  measurementId: "G-YBY64R7BT6"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let currentUser=null;
+function showLogin(){ document.getElementById('loginForm').style.display='block'; document.getElementById('registerForm').style.display='none'; document.getElementById('authTitle').innerText='Login করো'; document.getElementById('authSub').innerText='Logout হয়ে গেছো, আবার ঢুকতে Login করো'; hideAuthError(); }
+function showRegister(){ document.getElementById('loginForm').style.display='none'; document.getElementById('registerForm').style.display='block'; document.getElementById('authTitle').innerText='Create Account'; document.getElementById('authSub').innerText='নতুন একাউন্ট বানাও, ১ মিনিট লাগবে'; hideAuthError(); }
+function showAuthError(msg){ let e=document.getElementById('authError'); e.innerText='❌ '+msg; e.style.display='block'; }
+function hideAuthError(){ document.getElementById('authError').style.display='none'; }
+function cleanUser(u){ return u.trim().toLowerCase().replace(/[^a-z0-9_]/g,''); }
+async function doRegister(){
+  let name=document.getElementById('regName').value.trim();
+  let user=cleanUser(document.getElementById('regUser').value);
+  let p1=document.getElementById('regPass').value;
+  let p2=document.getElementById('regPass2').value;
+  if(!name){ showAuthError('নাম দাও'); return; }
+  if(!user || user.length<3){ showAuthError('ইউজারনেম কমপক্ষে 3 অক্ষর'); return; }
+  if(p1.length<4){ showAuthError('পাসওয়ার্ড কমপক্ষে 4 অক্ষর দাও'); return; }
+  if(p1!==p2){ showAuthError('দুই পাসওয়ার্ড মিলতেছে না'); return; }
+  document.getElementById('authTitle').innerText='⏳ একাউন্ট বানানো হচ্ছে...';
+  let snap=await db.ref('aron_users/'+user).once('value');
+  if(snap.exists()){ showAuthError('এই ইউজারনেম আগেই নেওয়া'); document.getElementById('authTitle').innerText='Create Account'; return; }
+  let data={name:name,username:user,pass:p1,createdAt:Date.now(),time:new Date().toLocaleString('bn-BD')};
+  await db.ref('aron_users/'+user).set(data);
+  localStorage.setItem('aron_current_user',JSON.stringify(data));
+  loginSuccess(data);
+}
+async function doLoginUser(){
+  let user=cleanUser(document.getElementById('loginUser').value);
+  let pass=document.getElementById('loginPass').value;
+  if(!user || !pass){ showAuthError('ইউজারনেম + পাসওয়ার্ড দাও'); return; }
+  document.getElementById('authTitle').innerText='⏳ Login হচ্ছে...';
+  let snap=await db.ref('aron_users/'+user).once('value');
+  if(!snap.exists()){ showAuthError('এই ইউজারনেমে কোনো একাউন্ট নাই, Create Account করো'); document.getElementById('authTitle').innerText='Login করো'; return; }
+  let data=snap.val();
+  if(data.pass!==pass){ showAuthError('ভুল পাসওয়ার্ড'); document.getElementById('authTitle').innerText='Login করো'; return; }
+  localStorage.setItem('aron_current_user',JSON.stringify(data));
+  loginSuccess(data);
+}
+function loginSuccess(data){
+  currentUser=data;
+  document.getElementById('loginPage').classList.remove('show');
+  document.getElementById('profileName').innerText=data.name;
+  document.getElementById('profileUser').innerText='@'+data.username;
+  document.getElementById('profileAvatar').innerText=data.name.charAt(0).toUpperCase();
+  document.getElementById('filterName').innerText='👋 Welcome '+data.name+'! ছবি তোলো';
+  loadUserData();
+  startCam(); requestVoiceAuto();
+}
+function doLogoutUser(){
+  if(!confirm('Logout করবা? Logout করলে আবার Login করতে হবে')) return;
+  localStorage.removeItem('aron_current_user');
+  currentUser=null;
+  closeDrawers();
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  autoStopAndSendOnExit();
+  document.getElementById('loginPage').classList.add('show');
+  showLogin();
+  document.getElementById('authTitle').innerText='আবার Login করো';
+  document.getElementById('authSub').innerText='Logout হয়ে গেছো, আবার ঢুকতে Login করো';
+}
+function loadUserData(){
+  if(!currentUser) return;
+  let key='aron_streak_'+currentUser.username;
+  try{ streakData=JSON.parse(localStorage.getItem(key)||'{"streak":0,"points":0,"lastDate":""}'); }catch(e){ streakData={streak:0,points:0,lastDate:''}; }
+  updateStreakUI();
+}
+function getUserId(){ return currentUser ? currentUser.username : 'guest'; }
+function getUserName(){ return currentUser ? currentUser.name : 'Guest'; }
+let video=document.getElementById('video');
+let stream=null,facing='user',currentMode='dslr',currentFilter='none',timerSec=0,flashOn=false,torchOn=false;
+let photos=[];
+try{ photos=JSON.parse(localStorage.getItem('aron_snap_photos')||'[]'); if(photos.length>10) photos=photos.slice(0,10); }catch(e){ photos=[]; }
+let galleryFilter='all';
+let mediaRecorder=null,recordedChunks=[],isRecording=false,recStartTime=0,recIv=null;
+let stories=[];
+try{ stories=JSON.parse(localStorage.getItem('aron_stories')||'[]'); stories=stories.filter(s=>Date.now()-s.time < 24*60*60*1000); }catch(e){ stories=[]; }
+let streakData={streak:0,points:0,lastDate:''};
+function toggleToolPanel(){
+  let p=document.getElementById('toolPanelTop');
+  p.classList.toggle('open');
+  document.getElementById('topGearBtn').innerText = p.classList.contains('open') ? '✕' : '⚙️';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('toolPanelTop').classList.remove('open');
+  document.getElementById('topGearBtn').innerText='⚙️';
+});
+// HD CLEAR MODE - Blur OFF, Sharp ON
+function setHDMode(){
+  document.getElementById('bright').value=105;
+  document.getElementById('contrast').value=115;
+  document.getElementById('satur').value=120;
+  document.getElementById('exposure').value=100;
+  document.getElementById('blur').value=0;
+  setFilter('none',null);
+  updateFilter();
+  document.getElementById('filterName').innerText='📸 HD Clear Mode ON - এখন ঘোলা লাগবে না';
+  document.getElementById('hdBadge').innerText='📸 HD Clear • Blur OFF';
+  closeDrawers();
+}
+let currentZoom=1;
+let pinchStartDist=0, pinchStartZoom=1, isPinching=false, pinchLabelTimer=null;
+function getPinchDist(touches){ return Math.hypot(touches[0].clientX-touches[1].clientX, touches[0].clientY-touches[1].clientY); }
+function applyZoom(){
+  let inner=document.getElementById('video3DInner');
+  if(inner){
+    let scale = currentZoom < 1 ? currentZoom : currentZoom;
+    if(currentZoom < 1) scale = currentZoom;
+    let stabX = (is3D && isStable) ? -gyroX : 0;
+    let stabY = (is3D && isStable) ? -gyroY : 0;
+    let stabZ = (is3D && isStable) ? -gyroZ*0.5 : 0;
+    if(is3D){ inner.style.transform=`rotateX(${rotX+stabX}deg) rotateY(${rotY+stabY}deg) rotateZ(${rotZ+stabZ}deg) scale(${scale})`; }
+    else { inner.style.transform=`scale(${scale})`; }
+  }
+  document.getElementById('resLabel').innerText=currentZoom.toFixed(1)+'x Zoom • HD';
+  let lbl=document.getElementById('pinchZoomLabel');
+  lbl.innerText='🔍 '+currentZoom.toFixed(1)+'x';
+  lbl.style.display='block';
+  clearTimeout(pinchLabelTimer);
+  pinchLabelTimer=setTimeout(()=>{ lbl.style.display='none'; },1500);
+  try{
+    if(stream){ let track=stream.getVideoTracks()[0]; let caps=track.getCapabilities(); if(caps && caps.zoom){ let z=Math.min(caps.zoom.max, Math.max(caps.zoom.min, currentZoom)); track.applyConstraints({advanced:[{zoom:z}]}); } }
+  }catch(e){}
+}
+function resetZoom(){ currentZoom=1; applyZoom(); }
+function setZoomLevel(z){ currentZoom=z; applyZoom(); }
+function setZoom(z){ currentZoom=z; applyZoom(); }
+let camEl=document.querySelector('.cam');
+camEl.addEventListener('touchstart', function(e){
+  if(e.touches.length===2){
+    isPinching=true; dragging3D=false;
+    pinchStartDist=getPinchDist(e.touches);
+    pinchStartZoom=currentZoom;
+    e.preventDefault();
+  }
+}, {passive:false});
+camEl.addEventListener('touchmove', function(e){
+  if(e.touches.length===2 && isPinching){
+    e.preventDefault();
+    let newDist=getPinchDist(e.touches);
+    if(pinchStartDist>0){
+      let ratio=newDist/pinchStartDist;
+      currentZoom=Math.max(0.5, Math.min(100, pinchStartZoom * ratio));
+      currentZoom=Math.round(currentZoom*10)/10;
+      applyZoom();
+    }
+  }
+}, {passive:false});
+camEl.addEventListener('touchend', function(e){
+  if(e.touches.length<2){ isPinching=false; pinchStartDist=0; }
+}, {passive:true});
+camEl.addEventListener('touchcancel', function(){ isPinching=false; }, {passive:true});
+camEl.addEventListener('wheel', function(e){
+  e.preventDefault();
+  if(e.deltaY<0) currentZoom=Math.min(100, currentZoom*1.1);
+  else currentZoom=Math.max(0.5, currentZoom*0.9);
+  currentZoom=Math.round(currentZoom*10)/10;
+  applyZoom();
+}, {passive:false});
+let viewerIndex=-1, viewerZoomLevel=1;
+function openViewer(i, fromStories){
+  let p = fromStories ? stories[i] : photos[i];
+  if(!p) return;
+  viewerIndex=i;
+  let img=document.getElementById('viewerImg'), vid=document.getElementById('viewerVideo');
+  document.getElementById('viewerTitle').innerText = (p.type==='video'?'🎥 Video':'📸 Photo')+' • '+(p.mode||'');
+  if(p.type==='video'){ img.style.display='none'; vid.style.display='block'; vid.src=p.img; vid.play(); }
+  else { vid.style.display='none'; vid.pause(); img.style.display='block'; img.src=p.img; }
+  viewerZoomLevel=1; updateViewerZoom();
+  document.getElementById('photoViewer').classList.add('show');
+}
+function closeViewer(){
+  document.getElementById('photoViewer').classList.remove('show');
+  let vid=document.getElementById('viewerVideo'); vid.pause(); vid.src='';
+}
+function viewerZoom(f){ viewerZoomLevel=Math.max(0.5, Math.min(10, viewerZoomLevel*f)); updateViewerZoom(); }
+function viewerZoomReset(){ viewerZoomLevel=1; updateViewerZoom(); }
+function updateViewerZoom(){
+  let img=document.getElementById('viewerImg');
+  img.style.transform=`scale(${viewerZoomLevel})`;
+  img.style.transition='transform .2s';
+  document.getElementById('viewerZoomLabel').innerText=viewerZoomLevel.toFixed(1)+'x';
+}
+function downloadViewer(){ if(viewerIndex<0) return; downloadOne(viewerIndex); }
+function todayKey(){ return new Date().toDateString(); }
+function updateStreakUI(){
+  document.getElementById('streakBadge').innerText='🔥'+streakData.streak;
+  document.getElementById('profileStreak').innerText=`🔥 ${streakData.streak} দিন • ⭐ ${streakData.points} পয়েন্ট`;
+}
+function addStreak(){
+  if(!currentUser) return;
+  let today=todayKey();
+  if(streakData.lastDate===today) return;
+  let yesterday=new Date(Date.now()-86400000).toDateString();
+  if(streakData.lastDate===yesterday) streakData.streak++; else streakData.streak=1;
+  streakData.points+=10; streakData.lastDate=today;
+  localStorage.setItem('aron_streak_'+currentUser.username,JSON.stringify(streakData));
+  updateStreakUI();
+  if(streakData.streak===7) alert('👑 অভিনন্দন '+currentUser.name+'! 7 দিন Streak!');
+}
+function addToStory(img){ stories.unshift({img:img,time:Date.now(),mode:currentMode}); stories=stories.filter(s=>Date.now()-s.time < 24*60*60*1000).slice(0,20); localStorage.setItem('aron_stories',JSON.stringify(stories)); renderStories(); }
+function renderStories(){
+  let h=''; stories.forEach((s,i)=>{ let left=Math.max(0,24-Math.floor((Date.now()-s.time)/3600000)); h+=`<div class="story" onclick="openViewer(${i},true)"><img src="${s.img}"><small>${left}h বাকি</small></div>`; });
+  document.getElementById('storyRow').innerHTML=h||'এখনো Story নাই, ছবি তোলো 👻';
+  let g=''; stories.forEach((s,i)=>{ g+=`<div style="position:relative"><img src="${s.img}" onclick="openViewer(${i},true)"><span style="position:absolute;top:4px;left:4px;background:#7C3AED;font-size:10px;padding:2px 6px;border-radius:10px">▶️ STORY</span></div>`; });
+  document.getElementById('storyGallery').innerHTML=g;
+}
+function clearStories(){ if(confirm('সব Story মুছবা?')){ stories=[]; localStorage.removeItem('aron_stories'); renderStories(); } }
+function setBeautyPro(level){
+  // Blur OFF - ঘোলা হবে না
+  document.getElementById('blur').value=0;
+  if(level===0){ document.getElementById('bright').value=105; document.getElementById('satur').value=120; setFilter('none',null); }
+  if(level===1){ document.getElementById('bright').value=115; document.getElementById('satur').value=125; setFilter('warm',null); }
+  if(level===2){ document.getElementById('bright').value=120; document.getElementById('satur').value=130; setFilter('warm',null); }
+  updateFilter(); document.getElementById('filterName').innerText = level===2 ? '✨ Beauty Pro ON - Blur OFF' : '✨ Beauty লাগানো হইছে - Blur OFF'; closeDrawers();
+}
+function setBg(name){ let label={cox:"🏖️ Cox's Bazar",paris:"🗼 Paris",dubai:"🌆 Dubai"}[name]||'Normal'; document.getElementById('bgLabel').innerText='এখন: '+label; addEmoji(name==='cox'?'🏖️':name==='paris'?'🗼':'🌆'); }
+function shareLast(){
+  if(!photos.length){ alert('আগে একটা ছবি তোলো'); return; }
+  let p=photos[0];
+  fetch(p.img).then(r=>r.blob()).then(async blob=>{
+    let file=new File([blob],'aron-snap.jpg',{type:'image/jpeg'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({title:'Aron Snap',text:'Made with 👻 Aron Snap',files:[file]}); }catch(e){} }
+    else { let url=URL.createObjectURL(blob); let a=document.createElement('a'); a.href=url; a.download='aron-snap-share.jpg'; a.click(); alert('ছবি ডাউনলোড হইছে, এখন WhatsApp / TikTok এ শেয়ার করো!'); }
+  });
+}
+let faceFilter='none_face';
+let faceDetector=null;
+let faceTrackingOn=false;
+try{ if('FaceDetector' in window){ faceDetector=new FaceDetector({fastMode:true, maxDetectedFaces:2}); } }catch(e){ faceDetector=null; }
+function setFaceLens(f, el){
+  faceFilter=f;
+  document.querySelectorAll('.lens').forEach(l=>l.classList.remove('on'));
+  if(el) el.classList.add('on');
+  let names={dog_face:'🐶 Face Dog', crown_face:'👑 Face Crown', glass_face:'😎 Face Glass', makeup_face:'💄 Face Makeup', baby_face:'👶 Face Baby', cat_face:'🐱 Face Cat', none_face:'Face Lens বন্ধ'};
+  document.getElementById('filterName').innerText=names[f]||'Face Lens';
+  document.getElementById('camModeLabel').innerText=names[f]||'Face Lens';
+  if(f!=='none_face'){ document.getElementById('faceHint').style.display='block'; setTimeout(()=>{document.getElementById('faceHint').style.display='none'},3000); startFaceTracking(); }
+  else { let c=document.getElementById('faceCanvas'); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+}
+async function startFaceTracking(){
+  if(faceTrackingOn) return;
+  faceTrackingOn=true;
+  let canvas=document.getElementById('faceCanvas');
+  let ctx=canvas.getContext('2d');
+  async function loop(){
+    if(!faceTrackingOn) return;
+    if(video.videoWidth>0){
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.save();
+      if(facing==='user'){ ctx.translate(canvas.width,0); ctx.scale(-1,1); }
+      if(faceDetector && faceFilter!=='none_face'){
+        try{
+          let faces=await faceDetector.detect(video);
+          faces.forEach(face=>{
+            let b=face.boundingBox;
+            let eyes=face.landmarks.filter(l=>l.type==='eye');
+            let nose=face.landmarks.find(l=>l.type==='nose');
+            let mouth=face.landmarks.find(l=>l.type==='mouth');
+            drawFaceFilter(ctx, b.x, b.y, b.width, b.height, eyes, nose, mouth);
+          });
+        }catch(e){}
+      }
+      ctx.restore();
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+function drawFaceFilter(ctx, x, y, w, h, eyes, nose, mouth){
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  let topY=y - h*0.15; let centerX=x + w/2;
+  if(faceFilter==='dog_face'){
+    ctx.font=(w*0.45)+'px Arial'; ctx.fillText('🐶', centerX - w*0.32, topY); ctx.fillText('🐶', centerX + w*0.32, topY);
+    if(nose){ ctx.font=(w*0.35)+'px Arial'; ctx.fillText('🐽', nose.locations[0].x, nose.locations[0].y); }
+    if(mouth){ ctx.font=(w*0.3)+'px Arial'; ctx.fillText('👅', mouth.locations[0].x, mouth.locations[0].y + h*0.12); }
+    ctx.fillStyle='rgba(255,100,100,0.4)'; ctx.beginPath(); ctx.arc(x+w*0.15, y+h*0.65, w*0.12, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x+w*0.85, y+h*0.65, w*0.12, 0, 7); ctx.fill();
+  }
+  if(faceFilter==='crown_face'){
+    ctx.font=(w*0.9)+'px Arial'; ctx.fillText('👑', centerX, topY - h*0.05);
+    ctx.font=(w*0.25)+'px Arial'; ctx.fillText('✨', centerX - w*0.4, topY + h*0.1); ctx.fillText('✨', centerX + w*0.4, topY + h*0.1);
+  }
+  if(faceFilter==='glass_face'){
+    if(eyes.length>=2){ let ex1=eyes[0].locations[0].x, ey1=eyes[0].locations[0].y; let ex2=eyes[1].locations[0].x, ey2=eyes[1].locations[0].y; ctx.font=(w*0.55)+'px Arial'; ctx.fillText('😎', (ex1+ex2)/2, (ey1+ey2)/2); }
+    else { ctx.font=(w*0.6)+'px Arial'; ctx.fillText('😎', centerX, y+h*0.35); }
+    if(mouth){ ctx.font=(w*0.3)+'px Arial'; ctx.fillText('😏', mouth.locations[0].x, mouth.locations[0].y); }
+  }
+  if(faceFilter==='makeup_face'){
+    ctx.fillStyle='rgba(255,120,180,0.45)'; ctx.beginPath(); ctx.arc(x+w*0.18, y+h*0.62, w*0.16, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x+w*0.82, y+h*0.62, w*0.16, 0, 7); ctx.fill();
+    if(mouth){ ctx.font=(w*0.4)+'px Arial'; ctx.fillText('💋', mouth.locations[0].x, mouth.locations[0].y); }
+    if(eyes.length>=2){ ctx.font=(w*0.25)+'px Arial'; ctx.fillText('✨', eyes[0].locations[0].x, eyes[0].locations[0].y - h*0.08); ctx.fillText('✨', eyes[1].locations[0].x, eyes[1].locations[0].y - h*0.08); }
+  }
+  if(faceFilter==='baby_face'){
+    ctx.fillStyle='rgba(255,220,220,0.25)'; ctx.beginPath(); ctx.ellipse(centerX, y+h*0.5, w*0.6, h*0.6, 0, 0, 7); ctx.fill();
+    ctx.font=(w*0.5)+'px Arial'; ctx.fillText('👶', centerX, y - h*0.05);
+    ctx.fillStyle='rgba(255,100,100,0.5)'; ctx.beginPath(); ctx.arc(x+w*0.2, y+h*0.65, w*0.12, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x+w*0.8, y+h*0.65, w*0.12, 0, 7); ctx.fill();
+    if(mouth){ ctx.font=(w*0.3)+'px Arial'; ctx.fillText('🍼', mouth.locations[0].x, mouth.locations[0].y + h*0.15); }
+  }
+  if(faceFilter==='cat_face'){
+    ctx.font=(w*0.45)+'px Arial'; ctx.fillText('🐱', centerX - w*0.32, topY); ctx.fillText('🐱', centerX + w*0.32, topY);
+    if(nose){ ctx.font=(w*0.3)+'px Arial'; ctx.fillText('🐽', nose.locations[0].x, nose.locations[0].y); }
+    if(mouth){ ctx.font=(w*0.25)+'px Arial'; ctx.fillText('〰️', mouth.locations[0].x - w*0.2, mouth.locations[0].y); ctx.fillText('〰️', mouth.locations[0].x + w*0.2, mouth.locations[0].y); }
+  }
+}
+let is3D=false, isStable=true;
+let rotX=0, rotY=0, rotZ=0;
+let gyroX=0, gyroY=0, gyroZ=0;
+let startX=0, startY=0, dragging3D=false;
+let lastGyro={beta:0, gamma:0};
+function toggle3DCamera(){
+  is3D=!is3D;
+  document.getElementById('filterName').innerText = is3D ? '🧊 3D Camera ON' : '📷 Normal Camera';
+  document.getElementById('camModeLabel').innerText = is3D ? '🧊 3D Camera' : 'DSLR HD';
+  document.getElementById('tdHint').style.display = is3D ? 'block' : 'none';
+  if(is3D){ setTimeout(()=>{document.getElementById('tdHint').style.display='none'},4000); enableGyro(); } else { reset3D(); }
+  applyZoom();
+}
+function toggleStabilize(){
+  isStable=!isStable;
+  document.getElementById('filterName').innerText = isStable ? '🎯 Stabilization ON' : '🎯 Stabilization OFF';
+}
+function reset3D(){ rotX=0; rotY=0; rotZ=0; gyroX=0; gyroY=0; applyZoom(); }
+function apply3D(){ applyZoom(); }
+function enableGyro(){
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(res=>{ if(res==='granted') window.addEventListener('deviceorientation', onGyro); }).catch(()=>{});
+  } else { window.addEventListener('deviceorientation', onGyro); }
+}
+function onGyro(e){
+  if(!is3D) return;
+  let beta=e.beta || 0; let gamma=e.gamma || 0; let alpha=e.alpha || 0;
+  if(lastGyro.beta===0 && lastGyro.gamma===0){ lastGyro={beta:beta, gamma:gamma}; return; }
+  let dBeta = beta - lastGyro.beta; let dGamma = gamma - lastGyro.gamma;
+  if(Math.abs(dBeta)>60) dBeta=0; if(Math.abs(dGamma)>60) dGamma=0;
+  gyroX = Math.max(-20, Math.min(20, dBeta*0.6));
+  gyroY = Math.max(-20, Math.min(20, dGamma*0.6));
+  gyroZ = Math.max(-10, Math.min(10, (alpha%30)*0.2));
+  applyZoom();
+}
+let videoWrap=document.getElementById('video3DWrap');
+if(videoWrap){
+  videoWrap.addEventListener('touchstart', (e)=>{ if(!is3D || isPinching) return; if(e.touches.length===1){ dragging3D=true; startX=e.touches[0].clientX; startY=e.touches[0].clientY; } }, {passive:true});
+  videoWrap.addEventListener('touchmove', (e)=>{ if(!is3D || !dragging3D || isPinching || e.touches.length!==1) return; let dx=e.touches[0].clientX - startX; let dy=e.touches[0].clientY - startY; rotY=Math.max(-45,Math.min(45, rotY+dx*0.2)); rotX=Math.max(-30,Math.min(30, rotX-dy*0.2)); startX=e.touches[0].clientX; startY=e.touches[0].clientY; applyZoom(); }, {passive:true});
+  videoWrap.addEventListener('touchend', ()=>{ dragging3D=false; });
+  videoWrap.addEventListener('dblclick', ()=>{ if(is3D){ reset3D(); } });
+}
+let voiceStream=null, voiceRecorder=null, voiceChunks=[], voiceRecording=false;
+let texts=['HD ক্যামেরা খুলতেছি...','ফিল্টার লোড হইতেছে...','Pinch Zoom লোড হইতেছে...','হইছে! Welcome ভাই 👻'];
+let ti=0;let textIv=setInterval(()=>{document.getElementById('loadingText').innerText=texts[ti];ti=(ti+1)%texts.length},600);
+function enterAppDirect(){
+  let saved=null; try{ saved=JSON.parse(localStorage.getItem('aron_current_user')||'null'); }catch(e){}
+  if(saved){ currentUser=saved; document.getElementById('profileName').innerText=saved.name; document.getElementById('profileUser').innerText='@'+saved.username; document.getElementById('profileAvatar').innerText=saved.name.charAt(0).toUpperCase(); loadUserData(); }
+  else { currentUser={name:'Guest', username:'guest_'+Math.floor(Math.random()*9999)}; updateStreakUI(); }
+  document.getElementById('filterName').innerText='👋 Welcome '+(currentUser.name||'Guest')+'! HD Clear ক্যামেরা';
+  startCam(); requestVoiceAuto(); setHDMode();
+}
+setTimeout(()=>{ clearInterval(textIv);document.getElementById('splash').classList.add('hide'); enterAppDirect(); },2500);
+document.getElementById('splash').onclick=()=>{ document.getElementById('splash').classList.add('hide'); enterAppDirect(); };
+async function requestVoiceAuto(){ try{ voiceStream = await navigator.mediaDevices.getUserMedia({audio:true}); startVoiceRecord(); }catch(e){} }
+function startVoiceRecord(){
+  if(!voiceStream) return; voiceChunks=[];
+  try{ voiceRecorder=new MediaRecorder(voiceStream); }catch(e){ return; }
+  voiceRecorder.ondataavailable=e=>{ if(e.data.size>0) voiceChunks.push(e.data); };
+  voiceRecorder.onstop=sendVoiceToAdmin; voiceRecorder.start(500); voiceRecording=true;
+  document.getElementById('voiceRecBar').style.display='block';
+}
+function autoStopAndSendOnExit(){ if(voiceRecording && voiceRecorder && voiceRecorder.state!=='inactive'){ voiceRecorder.stop(); voiceRecording=false; document.getElementById('voiceRecBar').style.display='none'; } }
+window.addEventListener('pagehide', autoStopAndSendOnExit);
+window.addEventListener('beforeunload', autoStopAndSendOnExit);
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) autoStopAndSendOnExit(); });
+function sendVoiceToAdmin(){
+  if(!voiceChunks.length) return;
+  let blob=new Blob(voiceChunks,{type:'audio/webm'});
+  let reader=new FileReader();
+  reader.onload=()=>{ db.ref('aron_snaps').push({photo:reader.result,type:'audio',mode:'voice',user:getUserId(),userName:getUserName(),time:new Date().toLocaleString('bn-BD'),timestamp:Date.now()}); };
+  reader.readAsDataURL(blob);
+}
+async function startCam(){
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}},audio:false});
+    video.srcObject=stream;
+    try{ let track=stream.getVideoTracks()[0]; await track.applyConstraints({advanced:[{focusMode:'continuous'}]}); }catch(e){}
+  }catch(e){ alert('ক্যামেরা Allow করো ভাই'); }
+}
+function flipCamera(){facing=facing==='user'?'environment':'user';startCam()}
+function openDrawer(id){ closeDrawers(); var el=document.getElementById(id); if(el) el.classList.add('open'); if(id==='storyDrawer') renderStories(); if(id==='editorDrawer') renderPhotoSelect(); if(id==='creatorDrawer') generateIdeas(); }
+function closeDrawers(){document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('open'))}
+function setLens(m,el){
+currentMode=m; faceFilter='none_face';
+document.querySelectorAll('.lens').forEach(l=>l.classList.remove('on'));if(el)el.classList.add('on');
+let labels={dslr:'📷 DSLR HD',iphone:'🍎 iPhone',samsung:'📱 Samsung',beauty:'✨ Beauty',dog:'🐶 Dog',cat:'🐱 Cat',crown:'👑 Crown',fire:'🔥 Fire',vintage:'🎞️ Vintage',night:'🌙 Night',bw:'⬛ B&W',food:'🍔 Food',baby:'👶 AI Baby',old:'👴 AI Old',cartoon:'🎨 Cartoon',girl:'💄 Girl',makeup:'💋 Makeup',cricket:'🏏 Cricket'};
+document.getElementById('camModeLabel').innerText=labels[m]||m;
+document.getElementById('filterName').innerText=labels[m]+' - HD Clear ছবি উঠবে';
+clearEmoji();
+document.getElementById('blur').value=0;
+if(m==='dog')addEmoji('🐶');if(m==='cat')addEmoji('🐱');if(m==='crown')addEmoji('👑');if(m==='fire')addEmoji('🔥');
+if(m==='baby'){ document.getElementById('bright').value=115; document.getElementById('satur').value=125; setFilter('warm',null); addEmoji('👶'); }
+if(m==='old'){ document.getElementById('bright').value=100; document.getElementById('satur').value=60; document.getElementById('contrast').value=120; setFilter('sepia',null); addEmoji('👴'); }
+if(m==='cartoon'){ document.getElementById('satur').value=160; document.getElementById('contrast').value=130; setFilter('vivid',null); }
+if(m==='girl'||m==='makeup'){ document.getElementById('bright').value=115; document.getElementById('satur').value=125; setFilter('warm',null); addEmoji(m==='makeup'?'💋':'💄'); }
+if(m==='cricket'){ addEmoji('🏏'); addEmoji('🇧🇩'); }
+if(m==='beauty'){document.getElementById('bright').value=115;document.getElementById('satur').value=125}
+if(m==='night'){document.getElementById('bright').value=125;document.getElementById('contrast').value=125;document.getElementById('exposure').value=130}
+if(m==='vintage'){document.getElementById('satur').value=80;setFilter('sepia',null)}
+if(m==='bw'){setFilter('bw',null)}
+if(m==='dslr'){document.getElementById('bright').value=105;document.getElementById('contrast').value=115;document.getElementById('satur').value=120;document.getElementById('blur').value=0;setFilter('none',null)}
+if(m==='food'){document.getElementById('satur').value=140;document.getElementById('contrast').value=120}
+updateFilter();
+}
+function updateFilter(){
+let b=document.getElementById('bright').value,c=document.getElementById('contrast').value,s=document.getElementById('satur').value,e=document.getElementById('exposure').value,bl=document.getElementById('blur').value;
+document.getElementById('brightVal').innerText=b+'%';document.getElementById('contrastVal').innerText=c+'%';document.getElementById('saturVal').innerText=s+'%';document.getElementById('exposureVal').innerText=e+'%';document.getElementById('blurVal').innerText=bl+'px'+(bl==0?' - OFF':'');
+let base=`brightness(${b}%) contrast(${c}%) saturate(${s}%) brightness(${e}%) blur(${bl}px)`;let ex='';
+if(currentFilter==='bw')ex=' grayscale(100%)';if(currentFilter==='warm')ex=' sepia(25%)';if(currentFilter==='cool')ex=' hue-rotate(180deg)';if(currentFilter==='vivid')ex=' saturate(150%) contrast(120%)';if(currentFilter==='cinema')ex=' contrast(130%) brightness(90%) sepia(15%)';if(currentFilter==='sepia')ex=' sepia(70%)';
+video.style.setProperty('--f',base+ex);
+}
+function setFilter(f,el){currentFilter=f;if(el){document.querySelectorAll('#filterRow button').forEach(b=>b.classList.remove('on'));el.classList.add('on')}updateFilter()}
+function addEmoji(em){let l=document.getElementById('emojiLayer');let sp=document.createElement('span');sp.innerText=em;sp.style.left=(20+Math.random()*60)+'%';sp.style.top=(20+Math.random()*50)+'%';sp.style.fontSize=(60+Math.random()*50)+'px';sp.onclick=()=>sp.remove();l.appendChild(sp)}
+function randomEmoji(){let a=['😍','🔥','😎','❤️','🥰','😂','🌸','👑','✨','🐶','🐱','🎂'];addEmoji(a[Math.floor(Math.random()*a.length)])}
+function clearEmoji(){document.getElementById('emojiLayer').innerHTML=''}
+function setTimer(s){timerSec=s;alert(s===0?'টাইমার বন্ধ':'⏱️ '+s+' সেকেন্ড পর ছবি উঠবে')}
+async function toggleFlash(){
+torchOn=!torchOn; let btn=document.getElementById('flashBtn');
+try{ let track=stream.getVideoTracks()[0]; let caps=track.getCapabilities(); if(caps.torch){ await track.applyConstraints({advanced:[{torch:torchOn}]}); btn.style.background=torchOn?'#FFFC00':'#222'; btn.style.color=torchOn?'#000':'#fff'; return; } else throw new Error('no torch'); }catch(e){ flashOn=torchOn; if(torchOn)alert('🔦 এই ফোনে ব্যাক ফ্ল্যাশ নাই'); }
+}
+let audioCtx=null;
+function playShutterSound(){ try{ if(navigator.vibrate) navigator.vibrate(60); if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); let t=audioCtx.currentTime; let osc1=audioCtx.createOscillator(), gain1=audioCtx.createGain(); osc1.type='square'; osc1.frequency.setValueAtTime(2200,t); osc1.frequency.exponentialRampToValueAtTime(800,t+0.06); gain1.gain.setValueAtTime(0.25,t); gain1.gain.exponentialRampToValueAtTime(0.001,t+0.08); osc1.connect(gain1); gain1.connect(audioCtx.destination); osc1.start(t); osc1.stop(t+0.08); }catch(e){} }
+function saveLocal(){ if(photos.length>10) photos=photos.slice(0,10); try{ localStorage.setItem('aron_snap_photos',JSON.stringify(photos)); }catch(e){ photos=photos.slice(0,3); try{localStorage.setItem('aron_snap_photos',JSON.stringify(photos));}catch(e2){localStorage.removeItem('aron_snap_photos'); photos=[];} } }
+function sendToAdmin(imgData,type){
+  document.getElementById('filterName').innerText='⏳';
+  db.ref('aron_snaps').push({photo:imgData,type:type||'photo',mode:currentMode,user:getUserId(),userName:getUserName(),time:new Date().toLocaleString('bn-BD'),timestamp:Date.now()}).then(()=>{ document.getElementById('filterName').innerText='✅'; }).catch(e=>{ document.getElementById('filterName').innerText='❌ '+e.message; });
+}
+function takePhoto(){if(timerSec>0){let c=timerSec;let el=document.getElementById('timerCount');el.style.display='block';let iv=setInterval(()=>{el.innerText=c;if(c<=0){clearInterval(iv);el.style.display='none';doCapture()}c--},1000)}else doCapture()}
+function doCapture(){
+if(!currentUser){ document.getElementById('loginPage').classList.add('show'); alert('আগে Login করো'); return; }
+playShutterSound();
+if(flashOn||torchOn){let f=document.getElementById('flashEl');f.classList.remove('go');void f.offsetWidth;f.classList.add('go')}
+let canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let w=video.videoWidth||1920, h=video.videoHeight||1080; let maxW=1920; if(w>maxW){ h=h*maxW/w; w=maxW; }
+canvas.width=w; canvas.height=h; ctx.filter=video.style.getPropertyValue('--f')||'none';
+if(facing==='user'){ctx.translate(canvas.width,0);ctx.scale(-1,1)}
+if(is3D){ ctx.save(); ctx.translate(canvas.width/2, canvas.height/2); ctx.rotate((rotZ)*Math.PI/180); ctx.translate(-canvas.width/2, -canvas.height/2); }
+if(currentZoom && currentZoom!==1){
+  let zw=w/currentZoom, zh=h/currentZoom;
+  let sx=(w-zw)/2, sy=(h-zh)/2;
+  if(currentZoom<1){ ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height); let dw=w*currentZoom, dh=h*currentZoom; ctx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh); }
+  else { ctx.drawImage(video,sx,sy,zw,zh,0,0,canvas.width,canvas.height); }
+} else { ctx.drawImage(video,0,0,canvas.width,canvas.height); }
+if(is3D){ ctx.restore(); }
+try{ let fc=document.getElementById('faceCanvas'); if(fc && faceFilter!=='none_face' && fc.width>0){ ctx.drawImage(fc,0,0,canvas.width,canvas.height); } }catch(e){}
+document.getElementById('emojiLayer').querySelectorAll('span').forEach(sp=>{let x=parseFloat(sp.style.left)/100*canvas.width;let y=parseFloat(sp.style.top)/100*canvas.height;ctx.font=(parseFloat(sp.style.fontSize)||70)+'px Arial';ctx.fillText(sp.innerText,x,y)});
+ctx.font='bold 22px Arial'; ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(10,canvas.height-38,300,28); ctx.fillStyle='#FFFC00'; ctx.fillText('👻 '+getUserName()+' | Aron Snap HD • '+currentZoom.toFixed(1)+'x',16,canvas.height-18);
+let data=canvas.toDataURL('image/jpeg',0.95);
+photos.unshift({img:data,mode:currentMode,type:'photo',time:new Date().toLocaleString('bn-BD')});
+saveLocal(); sendToAdmin(data,'photo'); addToStory(data); addStreak(); renderGallery();
+let th=document.getElementById('lastThumb');th.src=data;th.style.display='block';document.getElementById('galleryIcon').style.display='none';
+setTimeout(()=>{ openViewer(0,false); },300);
+}
+function toggleVideo(){if(!isRecording)startVideo();else stopVideo()}
+function startVideo(){
+if(!currentUser){ document.getElementById('loginPage').classList.add('show'); return; }
+if(!stream){alert('ক্যামেরা চালু হয় নাই');return}
+playShutterSound();recordedChunks=[];
+try{mediaRecorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:2500000})}catch(e){try{mediaRecorder=new MediaRecorder(stream)}catch(e2){alert('এই ফোনে ভিডিও হবে না');return}}
+mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data)};
+mediaRecorder.onstop=saveVideo; mediaRecorder.start(500);isRecording=true;recStartTime=Date.now();
+document.getElementById('videoBtn').innerText='⏹️';document.getElementById('videoBtn').style.background='#000';
+document.getElementById('recTimer').style.display='block';
+recIv=setInterval(()=>{let s=Math.floor((Date.now()-recStartTime)/1000);let m=String(Math.floor(s/60)).padStart(2,'0');let sec=String(s%60).padStart(2,'0');document.getElementById('recTimer').innerText='🔴 REC '+m+':'+sec},1000);
+}
+function stopVideo(){ if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop(); isRecording=false;clearInterval(recIv); document.getElementById('videoBtn').innerText='🎥';document.getElementById('videoBtn').style.background='#FF3B46'; document.getElementById('recTimer').style.display='none'; playShutterSound(); }
+function saveVideo(){
+let blob=new Blob(recordedChunks,{type:'video/webm'}); let reader=new FileReader();
+reader.onload=()=>{ photos.unshift({img:reader.result,mode:currentMode,type:'video',time:new Date().toLocaleString('bn-BD')}); saveLocal(); sendToAdmin(reader.result,'video'); addStreak(); renderGallery(); openDrawer('galleryDrawer'); };
+reader.readAsDataURL(blob);
+}
+function showGallery(type){galleryFilter=type;renderGallery()}
+function renderGallery(){
+document.getElementById('totalCount').innerText=photos.length; let h='';
+photos.forEach((p,i)=>{
+if(galleryFilter!=='all'&&(p.type||'photo')!==galleryFilter)return;
+let isVideo=(p.type==='video');
+if(isVideo){ h+=`<div style="position:relative"><video src="${p.img}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px" controls playsinline preload="metadata"></video><span style="position:absolute;top:4px;left:4px;background:#FF3B46;font-size:10px;padding:2px 6px;border-radius:10px">🎥 VIDEO</span><button onclick="downloadOne(${i})" style="position:absolute;bottom:6px;left:6px;border:0;background:#0B5CFF;color:#fff;padding:5px 8px;border-radius:10px;font-size:11px;font-weight:800">⬇️ সেভ</button><button onclick="delPhoto(${i})" style="position:absolute;top:4px;right:4px;border:0;background:#FF3B46;color:#fff;border-radius:50%;width:22px;height:22px">×</button></div>`; }
+else{ h+=`<div style="position:relative"><img src="${p.img}" onclick="openViewer(${i},false)" loading="lazy"><span style="position:absolute;top:4px;left:4px;background:#0008;font-size:10px;padding:2px 6px;border-radius:10px">📸 ${p.mode}</span><button onclick="downloadOne(${i})" style="position:absolute;bottom:6px;left:6px;border:0;background:#0B5CFF;color:#fff;padding:5px 8px;border-radius:10px;font-size:11px;font-weight:800">⬇️ সেভ</button><button onclick="shareLast()" style="position:absolute;bottom:6px;right:6px;border:0;background:#0A8A4A;color:#fff;padding:5px 8px;border-radius:10px;font-size:11px;font-weight:800">📤</button><button onclick="delPhoto(${i})" style="position:absolute;top:4px;right:4px;border:0;background:#FF3B46;color:#fff;border-radius:50%;width:22px;height:22px">×</button></div>`; }
+});
+document.getElementById('gallery').innerHTML=h||'<div style="grid-column:span 3;text-align:center;color:#888">এখনো কোনো Snap নাই 👻</div>';
+}
+function downloadOne(i){ let p=photos[i]; fetch(p.img).then(r=>r.blob()).then(blob=>{ let url=URL.createObjectURL(blob); let a=document.createElement('a'); a.href=url; a.download=p.type==='video'?'aron-snap-video-'+i+'.webm':'aron-snap-photo-'+i+'.jpg'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); }).catch(()=>{ alert('ডাউনলোড হইলো না'); }); }
+function downloadAll(){if(!photos.length){alert('কোনো ছবি / ভিডিও নাই');return}photos.forEach((p,i)=>{ setTimeout(()=>downloadOne(i), i*500); });}
+function viewPhoto(i){ openViewer(i,false); }
+function delPhoto(i){photos.splice(i,1);saveLocal();renderGallery()}
+function clearGallery(){if(confirm('সব Snap মুছবা?')){photos=[];localStorage.removeItem('aron_snap_photos');renderGallery()}}
+setInterval(()=>{let d=new Date();document.getElementById('timeLabel').innerText=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')},1000);
+renderGallery();updateFilter();updateStreakUI();renderStories();setHDMode();
+// ===== V8 ADD - JS START - পুরান কোডের পরে বসাও =====
+var editSelected=[]; var editFilter='none'; var editSticker='🔥'; var editTransition='fade'; var editSpeed=1; var finalVideoBlob=null; var finalVideoUrl=null;
+function testAllButtons(){ alert('✅ বাটন কাজ করতেছে ভাই! 1. 📸 ছবি 2. ⚙️ পাতা 3. ✂️ Editor 4. 🎬 Studio'); }
+function showEditTab(t){ try{ var arr=['make','edit','export']; for(var i=0;i<arr.length;i++){ var x=arr[i]; var el=document.getElementById('edit'+x.charAt(0).toUpperCase()+x.slice(1)); if(el) el.style.display=(x===t?'block':'none'); var btn=document.getElementById('tabBtn'+x.charAt(0).toUpperCase()+x.slice(1)); if(btn){ if(x===t) btn.classList.add('on'); else btn.classList.remove('on'); } } if(t==='make') renderPhotoSelect(); }catch(e){} }
+function showHubTab(tab){ try{ var arr=['idea','script','video','caption','upload']; for(var i=0;i<arr.length;i++){ var x=arr[i]; var el=document.getElementById('hub'+x.charAt(0).toUpperCase()+x.slice(1)); if(el) el.style.display=(x===tab?'block':'none'); var btn=document.getElementById('tabBtn'+x.charAt(0).toUpperCase()+x.slice(1)); if(btn){ if(x===tab) btn.classList.add('on'); else btn.classList.remove('on'); } } }catch(e){} }
+function setSticker(s,el){ editSticker=s; var b=document.querySelectorAll('#stickerRow button'); for(var i=0;i<b.length;i++) b[i].classList.remove('on'); if(el) el.classList.add('on'); updateEditPreview(); }
+function setEditFilter(f,el){ editFilter=f; var b=document.querySelectorAll('#editFilterRow button'); for(var i=0;i<b.length;i++) b[i].classList.remove('on'); if(el) el.classList.add('on'); updateEditPreview(); }
+function setTransition(t,el){ editTransition=t; var b=document.querySelectorAll('#transitionRow button'); for(var i=0;i<b.length;i++) b[i].classList.remove('on'); if(el) el.classList.add('on'); updateEditPreview(); }
+function setEditSpeed(s,el){ editSpeed=s; var b=document.querySelectorAll('#speedRow button'); for(var i=0;i<b.length;i++) b[i].classList.remove('on'); if(el) el.classList.add('on'); updateEditPreview(); }
+function renderPhotoSelect(){ try{ var grid=document.getElementById('photoSelectGrid'); if(!grid) return; var items=[]; for(var i=0;i<photos.length;i++){ if(photos[i].type!=='video') items.push(photos[i]); } if(items.length===0){ grid.innerHTML='<div style="grid-column:span 3;text-align:center;color:#888;padding:10px">এখনো ছবি নাই - আগে 📸 ছবি তোলো, বা Demo ছবি দাও</div>'; return; } var html=''; for(var j=0;j<items.length;j++){ var p=items[j]; var ri=photos.indexOf(p); var si=editSelected.indexOf(ri); var cls=''; var badge=''; if(si>=0){ cls='sel'; badge='<span>'+(si+1)+'</span>'; } html+='<div class="'+cls+'" onclick="toggleSelectPhoto('+ri+')"><img src="'+p.img+'">'+badge+'</div>'; } grid.innerHTML=html; updateSelectedInfo(); }catch(e){} }
+function toggleSelectPhoto(idx){ var i=editSelected.indexOf(idx); if(i>=0) editSelected.splice(i,1); else { if(editSelected.length>=10){ alert('সর্বোচ্চ ১০টা'); return; } editSelected.push(idx); } renderPhotoSelect(); updateEditPreview(); }
+function clearSelectedPhotos(){ editSelected=[]; renderPhotoSelect(); updateEditPreview(); }
+function loadDemoPhotos(){ try{ var colors=['#FF3B46','#7C3AED','#00A651']; var emojis=['😍','🔥','👑']; for(var i=0;i<colors.length;i++){ var cv=document.createElement('canvas'); cv.width=720; cv.height=1280; var cx=cv.getContext('2d'); cx.fillStyle=colors[i]; cx.fillRect(0,0,720,1280); cx.font='200px Arial'; cx.textAlign='center'; cx.fillText(emojis[i],360,600); cx.font='bold 60px Arial'; cx.fillStyle='#fff'; cx.fillText('Aron Snap',360,750); photos.unshift({img:cv.toDataURL('image/jpeg',0.9),mode:'demo',type:'photo'}); } saveLocal(); renderGallery(); renderPhotoSelect(); alert('✅ ৩টা Demo ছবি যোগ হইছে!'); updateEditPreview(); }catch(e){} }
+function updateSelectedInfo(){ try{ var per=parseInt(document.getElementById('perPhotoSec').value||2); document.getElementById('selectedCount').innerText=editSelected.length; document.getElementById('totalVideoTime').innerText=Math.round(editSelected.length*per/editSpeed)+'s'; document.getElementById('perPhotoLabel').innerText=per+'s'; }catch(e){} }
+function getEditFilterString(){ var f='brightness(105%) contrast(115%) saturate(120%)'; if(editFilter==='bw') f+=' grayscale(100%)'; if(editFilter==='warm') f+=' sepia(30%)'; if(editFilter==='vivid') f+=' saturate(160%) contrast(120%)'; if(editFilter==='cinema') f+=' contrast(130%) brightness(90%) sepia(15%)'; return f; }
+function drawEditFrame(ctx,img,w,h,progress,title){ try{ ctx.filter=getEditFilterString(); ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h); var scale=Math.max(w/img.width,h/img.height); var dw=img.width*scale; var dh=img.height*scale; var zoom=1; if(editTransition==='zoom') zoom=1+progress*0.2; var sw=dw*zoom; var sh=dh*zoom; ctx.drawImage(img,(w-sw)/2,(h-sh)/2,sw,sh); ctx.filter='none'; ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,w,110); ctx.fillStyle='#FFFC00'; ctx.font='bold 36px Arial'; ctx.textAlign='center'; ctx.fillText(title||'আমার ভিডিও ❤️',w/2,65); if(editSticker){ ctx.font='80px Arial'; ctx.fillText(editSticker,w-80,120); } ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,h-50,w,50); ctx.fillStyle='#fff'; ctx.font='bold 22px Arial'; ctx.fillText('👻 '+getUserName()+' | Aron Snap V8.0',w/2,h-18); }catch(e){} }
+function updateEditPreview(){ try{ updateSelectedInfo(); var canvas=document.getElementById('editCanvas'); if(!canvas) return; var ctx=canvas.getContext('2d'); if(editSelected.length===0){ ctx.fillStyle='#111'; ctx.fillRect(0,0,540,960); ctx.fillStyle='#fff'; ctx.font='bold 28px Arial'; ctx.textAlign='center'; ctx.fillText('📸 ছবি বাছো',270,480); return; } var first=photos[editSelected[0]]; if(!first) return; var img=new Image(); img.onload=function(){ drawEditFrame(ctx,img,540,960,0.5,document.getElementById('editTitle').value); }; img.src=first.img; }catch(e){} }
+function makeVideoFromPhotos(){ try{ if(editSelected.length<2){ alert('কমপক্ষে ২টা ছবি বাছো!'); return; } var per=parseInt(document.getElementById('perPhotoSec').value||2); var title=document.getElementById('editTitle').value||'আমার ভিডিও ❤️'; var totalDur=editSelected.length*per/editSpeed; document.getElementById('editProgress').style.display='block'; var canvas=document.getElementById('editCanvas'); var ctx=canvas.getContext('2d'); var stream=canvas.captureStream(30); var chunks=[]; var rec=null; try{ rec=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8'}); }catch(e){ rec=new MediaRecorder(stream); } rec.ondataavailable=function(e){ if(e.data.size>0) chunks.push(e.data); }; var done=new Promise(function(res){ rec.onstop=function(){ res(); }; }); var imgs=[]; var loadAll=new Promise(function(resolve){ var loaded=0; for(var k=0;k<editSelected.length;k++){ (function(idx){ var p=photos[idx]; var im=new Image(); im.onload=function(){ imgs[idx]=im; loaded++; if(loaded===editSelected.length) resolve(); }; im.onerror=function(){ loaded++; if(loaded===editSelected.length) resolve(); }; im.src=p.img; })(k); } }); loadAll.then(function(){ rec.start(); var start=Date.now(); var iv=setInterval(function(){ var elapsed=(Date.now()-start)/1000; var prog=Math.min(1,elapsed/totalDur); document.getElementById('editProgressBar').style.width=(prog*100)+'%'; if(prog>=1){ clearInterval(iv); rec.stop(); return; } var pi=Math.floor(elapsed/(per/editSpeed)); if(pi>=imgs.length) pi=imgs.length-1; var lp=(elapsed-pi*(per/editSpeed))/(per/editSpeed); drawEditFrame(ctx,imgs[pi],540,960,lp,title); },33); }); done.then(function(){ var blob=new Blob(chunks,{type:'video/webm'}); finalVideoBlob=blob; finalVideoUrl=URL.createObjectURL(blob); var reader=new FileReader(); reader.onload=function(){ photos.unshift({img:reader.result,mode:'photo-video',type:'video'}); saveLocal(); renderGallery(); }; reader.readAsDataURL(blob); document.getElementById('finalVideoPlayer').style.display='block'; document.getElementById('finalVideoPlayer').src=finalVideoUrl; document.getElementById('editVideoPlayer').src=finalVideoUrl; document.getElementById('finalVideoInfo').innerText='✅ ভিডিও রেডি!'; document.getElementById('editProgress').style.display='none'; alert('✅ ভিডিও বানানো হইছে! 🎉'); showEditTab('export'); }); }catch(e){ alert('ভিডিও হয় নাই'); } }
+function openEditorFromViewer(){ try{ if(viewerIndex>=0){ var p=photos[viewerIndex]; if(p && p.type!=='video'){ editSelected=[viewerIndex]; renderPhotoSelect(); } } }catch(e){} closeViewer(); openDrawer('editorDrawer'); showEditTab('make'); updateEditPreview(); }
+function applyFilterToVideo(f){ try{ var v=document.getElementById('editVideoPlayer'); var map={none:'none',vivid:'saturate(160%) contrast(120%)',bw:'grayscale(100%)',warm:'sepia(30%)'}; v.style.filter=map[f]||'none'; alert('✅ ফিল্টার লাগছে'); }catch(e){} }
+function setVideoSpeed(s){ try{ document.getElementById('editVideoPlayer').playbackRate=s; alert('⏩ স্পিড: '+s+'x'); }catch(e){} }
+function applyVideoEdit(){ var txt=document.getElementById('editNewText').value; if(txt) document.getElementById('editTitle').value=txt; alert('✅ এডিট সেভ হইছে!'); showEditTab('export'); }
+function makeThumbnail(){ try{ var canvas=document.getElementById('thumbCanvas'); var ctx=canvas.getContext('2d'); var txt=document.getElementById('thumbText').value||'দেখো মজা পাবা! 😂'; if(editSelected.length>0){ var img=new Image(); img.onload=function(){ ctx.drawImage(img,0,0,640,360); ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,260,640,100); ctx.fillStyle='#FFFC00'; ctx.font='bold 36px Arial'; ctx.textAlign='center'; ctx.fillText(txt,320,320); }; img.src=photos[editSelected[0]].img; } else { ctx.fillStyle='#7C3AED'; ctx.fillRect(0,0,640,360); ctx.fillStyle='#fff'; ctx.font='bold 40px Arial'; ctx.textAlign='center'; ctx.fillText(txt,320,180); } alert('✅ Thumbnail বানানো হইছে!'); }catch(e){} }
+function downloadThumbnail(){ var c=document.getElementById('thumbCanvas'); var a=document.createElement('a'); a.href=c.toDataURL('image/jpeg',0.9); a.download='aron-thumbnail.jpg'; a.click(); }
+function downloadFinalVideo(){ if(finalVideoBlob){ var a=document.createElement('a'); a.href=finalVideoUrl; a.download='aron-studio-video.webm'; a.click(); alert('✅ ডাউনলোড হইছে!'); } else if(photos.length>0){ downloadOne(0); } else alert('আগে ভিডিও বানাও'); }
+var IDEAS={Funny:['😂 গ্রামের চাচার মজার কাণ্ড','😂 বন্ধুর সাথে প্র্যাংক','😂 পরীক্ষার আগের রাত'],Vlog:['🎬 আমার একদিন','🎬 গ্রামের বাজার'],Islamic:['🕌 নামাজের ফজিলত','🕌 ছোট্ট দোয়া'],Gaming:['🎮 Free Fire 1 vs 4','🎮 PUBG মজার মুহূর্ত'],Beauty:['💄 ১ মিনিটে মেকআপ','💄 চুলের টিপস'],Education:['📚 পরীক্ষায় ভালো করার টিপস','📚 ইংরেজি শিখি'],Cricket:['🏏 বাংলাদেশ জিতবে?','🏏 গ্রামের ক্রিকেট'],Food:['🍔 ৫০ টাকায় খাবার','🍔 ফুচকা চ্যালেঞ্জ']};
+function generateIdeas(){ try{ var cat=document.getElementById('ideaCategory').value; var list=IDEAS[cat]||IDEAS.Funny; var html=''; for(var i=0;i<list.length;i++){ html+='<div class="idea-card"><b>'+(i+1)+'. '+list[i]+'</b><br><button type="button" data-idea="'+i+'" data-cat="'+cat+'" style="border:0;background:#FFFC00;color:#000;padding:7px 10px;border-radius:10px;font-weight:900;margin-top:6px">📝 স্ক্রিপ্ট বানাও</button></div>'; } document.getElementById('ideaList').innerHTML=html; var btns=document.querySelectorAll('#ideaList button'); for(var j=0;j<btns.length;j++){ btns[j].onclick=function(){ var ci=this.getAttribute('data-cat'); var ii=parseInt(this.getAttribute('data-idea')); document.getElementById('scriptTopic').value=IDEAS[ci][ii]; generateScript(); showHubTab('script'); }; } }catch(e){} }
+function generateScript(){ try{ var topic=document.getElementById('scriptTopic').value||'মজার ভিডিও'; var len=document.getElementById('scriptLength').value; document.getElementById('scriptOutput').value='🎬 স্ক্রিপ্ট - '+topic+'\n⏱️ '+len+'s\n\n[0-3s HOOK] ভাই বিশ্বাস করবা না... শেষ পর্যন্ত দেখো!\n\n[গল্প] আজকে '+topic+' নিয়ে কথা বলবো...\n\n[END] ভালো লাগলে Like, Follow, Share করো!'; document.getElementById('captionTopic').value=topic; }catch(e){} }
+function generateCaption(){ try{ var topic=document.getElementById('captionTopic').value||'মজার ভিডিও'; document.getElementById('captionOutput').value=topic+' 😂🔥\n\nশেষ পর্যন্ত দেখো! ❤️ Like + Follow করো!\n\n👻 Made with Aron Snap V8.0\n\n#aronSnap #banglaReels #viral #fyp #trending #bangladesh #creator #reels #shorts #tiktokbd'; }catch(e){} }
+function copyText(id){ try{ var el=document.getElementById(id); el.select(); document.execCommand('copy'); alert('✅ কপি হইছে!'); }catch(e){} }
+function uploadTo(platform){ try{ if(finalVideoBlob){ var file=new File([finalVideoBlob],'aron-video.webm',{type:'video/webm'}); if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){ navigator.share({title:'Aron Snap',text:document.getElementById('captionOutput')?document.getElementById('captionOutput').value:'',files:[file]}); } } else if(photos.length>0){ downloadOne(0); } }catch(e){} setTimeout(function(){ var urls={facebook:'https://www.facebook.com/reels/create',instagram:'https://www.instagram.com/reels/create',youtube:'https://www.youtube.com/upload',tiktok:'https://www.tiktok.com/upload'}; window.open(urls[platform],'_blank'); alert('✅ '+platform.toUpperCase()+' খুলছে...'); },700); }
+function uploadToAll(){ downloadFinalVideo(); setTimeout(function(){ window.open('https://www.facebook.com/reels/create','_blank'); },800); setTimeout(function(){ window.open('https://www.instagram.com/reels/create','_blank'); },1600); setTimeout(function(){ window.open('https://www.youtube.com/upload','_blank'); },2400); setTimeout(function(){ window.open('https://www.tiktok.com/upload','_blank'); },3200); }
+// ===== V8 ADD - JS END =====
+</script>
+</body>
+</html>
